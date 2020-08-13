@@ -13,12 +13,6 @@ HWND DebugWindow::child = nullptr;
 HINSTANCE DebugWindow::hInst = nullptr;
 
 
-struct Circle
-{
-	int x, y;
-};
-
-
 // Dxライブラリのメイン
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInst, LPSTR lpsCmdLine, int nCmdShow)
 {
@@ -39,83 +33,131 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInst, LPSTR lpsCmdLine, i
 
 	SetDrawScreen(DX_SCREEN_BACK);		// 裏画面設定
 
-	Circle circle;
-	circle.x = 320;
-	circle.y = 240;
+	int select = 0;
+	int nowSelect = -1;
 
-	long long push_time[4] = {0};
+	bool isPushUpKey = false;
+	bool isPushDownKey = false;
+
+	int pushWaitCount = 0;
+
+	vector<string> characters;
+	characters.push_back("霊夢");
+	characters.push_back("魔理沙");
+	characters.push_back("咲夜");
+	characters.push_back("妖夢");
+	characters.push_back("早苗");
+
+
+	// dat.dxaファイルから画像読み込み
+	vector<int> imgs;
+	for (int i = 0; i < 5; i++)
+	{
+		string file = "dat/" + characters[i] + ".png";
+
+		int handle = LoadGraph(file.c_str());
+
+
+		string log = file;
+		if (handle != -1)
+		{
+
+			log = file + "の読み込みに成功";
+		}
+		else
+		{
+			log = file + "の読み込みに失敗";
+		}
+
+		DebugWindow::Log(log);
+
+		imgs.push_back(handle);
+	}
 	
 
 	// メインループ
 	for (; ProcessMessage()==0 && ClearDrawScreen()==0; ScreenFlip())
 	{
-		if (CheckHitKey(KEY_INPUT_LEFT))
+		// 上下キー
+		pushWaitCount--;
+		if (pushWaitCount <= 0)
 		{
-			circle.x--;
-			push_time[0]++;
-		}
-		else
-		{
-			push_time[0] = 0;
-		}
-
-		if (CheckHitKey(KEY_INPUT_RIGHT))
-		{
-			circle.x++;
-			push_time[1]++;
-		}
-		else
-		{
-			push_time[1] = 0;
-		}
-
-		if (CheckHitKey(KEY_INPUT_UP))
-		{
-			circle.y--;
-			push_time[2]++;
-		}
-		else
-		{
-			push_time[2] = 0;
-		}
-
-		if (CheckHitKey(KEY_INPUT_DOWN))
-		{
-			circle.y++;
-			push_time[3]++;
-		}
-		else
-		{
-			push_time[3] = 0;
-		}
-
-		for (int i = 0; i < 4; i++)
-		{
-			if (push_time[i] == 1)
+			if (CheckHitKey(KEY_INPUT_DOWN))
 			{
-				switch (i)
+				select++;
+				if (select > 4)
 				{
-					case 0:
-						DebugWindow::Log("左に進んでいます", DebugWindow::Red);
-						break;
-
-					case 1:
-						DebugWindow::Log("右に進んでいます", DebugWindow::Blue);
-						break;
-
-					case 2:
-						DebugWindow::Log("上に進んでいます", DebugWindow::Green);
-						break;
-
-					case 3:
-						DebugWindow::Log("下に進んでいます", DebugWindow::Yellow);
-						break;
-
+					select = 0;
 				}
+
+				pushWaitCount = 20;
+			}
+
+			if (CheckHitKey(KEY_INPUT_UP))
+			{
+				select--;
+				if (select < 0)
+				{
+					select = 4;
+				}
+
+				pushWaitCount = 20;
 			}
 		}
 
-		DrawCircle(circle.x, circle.y, 20, GetColor(255,0,0), true);
+		// キャラクター名を表示
+		for (int i = 0; i < 5; i++)
+		{
+			int color = (i == select) ? GetColor(255, 255, 0) : GetColor(255, 255, 255);
+			DrawString(20, 50 + 50 * i, characters[i].c_str(), color);
+		}
+
+
+		// キャラクターが選択された
+		if (nowSelect != select)
+		{
+			if (CheckHitKey(KEY_INPUT_SPACE))
+			{
+				nowSelect = select;
+
+
+				DebugWindow::Color color;
+
+				switch (select)
+				{
+					case 0:
+						color = DebugWindow::Color::Red;
+						break;
+
+					case 1:
+						color = DebugWindow::Color::Yellow;
+						break;
+
+					case 2:
+						color = DebugWindow::Color::White;
+						break;
+
+					case 3:
+						color = DebugWindow::Color::Green;
+						break;
+
+					case 4:
+						color = DebugWindow::Color::Blue;
+						break;
+				}
+
+				string log = characters[select] + " が選択されました。";
+
+				// 別ウィンドウに表示させる
+				DebugWindow::Log(log, color);
+			}
+		}
+
+		// キャラクターが選択されていたら、画像表示
+		if (nowSelect != -1)
+		{
+			DrawGraph(200, 10, imgs[nowSelect], true);
+		}
 
 	}
 
